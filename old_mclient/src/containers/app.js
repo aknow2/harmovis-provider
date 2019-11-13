@@ -46,33 +46,35 @@ class App extends Container {
 	    //	    let setMovedata = Object.assign({}, movesbasedata[i]);
 	    let setMovedata = movesbasedata[i];
 	    if(mtype === setMovedata.mtype && id === setMovedata.id){
-		hit = true;
-//		const {operation } = setMovedata;
-		//		const arrivaltime = time;
-		setMovedata.arrivaltime = time;		
-		setMovedata.operation.push({
-		    elapsedtime: time,
-		    position:[lon, lat, 0],
-		    angle,speed
-		});
-//		setMovedata = Object.assign({}, setMovedata, {arrivaltime, operation});
+			hit = true;
+			//	const {operation } = setMovedata;
+			//		const arrivaltime = time;
+			setMovedata.arrivaltime = time;		
+			setMovedata.operation.push({
+					elapsedtime: time,
+					position:[lon, lat, 0],
+					angle,
+					speed
+			});
+			//	setMovedata = Object.assign({}, setMovedata, {arrivaltime, operation});
 	    }
 	    setMovesbase.push(setMovedata);
 	}
+
 	if(!hit){
 	    setMovesbase.push({
-		mtype, id,
-		departuretime:time,
-		arrivaltime: time,
-		operation: [{
-		    elapsedtime:time,
-		    position:[lon, lat, 0],
-		    angle, speed
-		}]
-	    });
+			mtype, id,
+			departuretime:time,
+			arrivaltime: time,
+			operation: [{
+					elapsedtime:time,
+					position:[lon, lat, 0],
+					angle, speed
+			}]
+				});
+		}
+		actions.updateMovesBase(setMovesbase);
 	}
-	actions.updateMovesBase(setMovesbase);
-    }
 
   deleteMovebase(maxKeepSecond) {
     const { actions, animatePause, movesbase, settime } = this.props

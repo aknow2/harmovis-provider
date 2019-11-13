@@ -4,13 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/mtfelian/golang-socketio"
-	"github.com/mtfelian/golang-socketio/transport"
-	fleet "github.com/synerex/proto_fleet"
-	api "github.com/synerex/synerex_api"
-	pbase "github.com/synerex/synerex_proto"
-	sxutil "github.com/synerex/synerex_sxutil"
 	"log"
 	"net/http"
 	"os"
@@ -18,64 +11,69 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+	gosocketio "github.com/mtfelian/golang-socketio"
+	"github.com/mtfelian/golang-socketio/transport"
+	fleet "github.com/synerex/proto_fleet"
+	api "github.com/synerex/synerex_api"
+	pbase "github.com/synerex/synerex_proto"
+	sxutil "github.com/synerex/synerex_sxutil"
 )
 
 // Harmoware Vis-Synerex provider provides map information to Web Service through socket.io.
 
 var (
-	nodesrv    = flag.String("nodesrv", "127.0.0.1:9990", "Node ID Server")
-	port       = flag.Int("port", 10080, "HarmoVis Provider Listening Port")
-	mu         sync.Mutex
-	version    = "0.01"
-	assetsDir  http.FileSystem
-	ioserv     *gosocketio.Server
+	nodesrv         = flag.String("nodesrv", "127.0.0.1:9990", "Node ID Server")
+	port            = flag.Int("port", 10080, "HarmoVis Provider Listening Port")
+	mu              sync.Mutex
+	version         = "0.01"
+	assetsDir       http.FileSystem
+	ioserv          *gosocketio.Server
 	sxServerAddress string
 )
 
-
 func toJSON(m map[string]interface{}, utime int64) string {
 	s := fmt.Sprintf("{\"mtype\":%d,\"id\":%d,\"time\":%d,\"lat\":%f,\"lon\":%f,\"angle\":%f,\"speed\":%d}",
-		0, int(m["vehicle_id"].(float64)),utime, m["coord"].([]interface{})[0].(float64), m["coord"].([]interface{})[1].(float64), m["angle"].(float64), int(m["speed"].(float64)))
+		0, int(m["vehicle_id"].(float64)), utime, m["coord"].([]interface{})[0].(float64), m["coord"].([]interface{})[1].(float64), m["angle"].(float64), int(m["speed"].(float64)))
 	return s
 }
 
-func handleFleetMessage(sv *gosocketio.Server, param interface{}){
-	var  bmap map[string]interface{}
+func handleFleetMessage(sv *gosocketio.Server, param interface{}) {
+	var bmap map[string]interface{}
 	utime := time.Now().Unix()
 	bmap = param.(map[string]interface{})
-	for _, v := range bmap["vehicles"].([]interface{}){
+	for _, v := range bmap["vehicles"].([]interface{}) {
 		m, _ := v.(map[string]interface{})
 		s := toJSON(m, utime)
 		sv.BroadcastToAll("event", s)
 	}
 }
 
-
-func getFleetInfo(serv string, sv *gosocketio.Server, ch chan error){
+func getFleetInfo(serv string, sv *gosocketio.Server, ch chan error) {
 	fmt.Printf("Dial to [%s]\n", serv)
-	sioClient, err := gosocketio.Dial(serv + "socket.io/?EIO=3&transport=websocket", transport.DefaultWebsocketTransport())
-	if err != nil{
-		log.Printf("SocketIO Dial error: %s",err)
+	sioClient, err := gosocketio.Dial(serv+"socket.io/?EIO=3&transport=websocket", transport.DefaultWebsocketTransport())
+	if err != nil {
+		log.Printf("SocketIO Dial error: %s", err)
 		return
 	}
 
-	sioClient.On(gosocketio.OnConnection, func(c *gosocketio.Channel, param interface{}){
+	sioClient.On(gosocketio.OnConnection, func(c *gosocketio.Channel, param interface{}) {
 		fmt.Println("Fleet-Provider socket.io connected ", c)
 	})
-		
-	sioClient.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel, param interface{}){
+
+	sioClient.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel, param interface{}) {
 		fmt.Println("Fleet-Provider socket.io disconnected ", c)
 		ch <- fmt.Errorf("Disconnected!\n")
 	})
 
-	sioClient.On("vehicle_status",  func(c *gosocketio.Channel, param interface{}){
+	sioClient.On("vehicle_status", func(c *gosocketio.Channel, param interface{}) {
 		handleFleetMessage(sv, param)
 	})
-	
+
 }
 
-
-func runFleetInfo(serv string, sv *gosocketio.Server){
+func runFleetInfo(serv string, sv *gosocketio.Server) {
 	ch := make(chan error)
 	for {
 		time.Sleep(3 * time.Second)
@@ -166,8 +164,8 @@ func supplyRideCallback(clt *sxutil.SXServiceClient, sp *api.Supply) {
 			angle: flt.Angle,
 			speed: flt.Speed,
 		}
-//		jsondata, err := json.Marshal(*mm)
-//		fmt.Println("rcb",mm.GetJson())
+		//		jsondata, err := json.Marshal(*mm)
+		//		fmt.Println("rcb",mm.GetJson())
 		mu.Lock()
 		ioserv.BroadcastToAll("event", mm.GetJson())
 		mu.Unlock()
@@ -181,7 +179,7 @@ func subscribeRideSupply(client *sxutil.SXServiceClient) {
 		log.Printf("Error:Supply %s\n", err.Error())
 		// we need to restart
 
-		time.Sleep(5*time.Second) // wait 5 seconds to reconnect
+		time.Sleep(5 * time.Second) // wait 5 seconds to reconnect
 		newClt := sxutil.GrpcConnectServer(sxServerAddress)
 		if newClt != nil {
 			log.Printf("Reconnect server [%s]\n", sxServerAddress)
@@ -215,9 +213,9 @@ func subscribePTSupply(client *sxutil.SXServiceClient) {
 }
 */
 
-func monitorStatus(){
-	for{
-		sxutil.SetNodeStatus(int32(runtime.NumGoroutine()),"HV")
+func monitorStatus() {
+	for {
+		sxutil.SetNodeStatus(int32(runtime.NumGoroutine()), "HV")
 		time.Sleep(time.Second * 3)
 	}
 }
@@ -226,11 +224,11 @@ func main() {
 	flag.Parse()
 
 	channelTypes := []uint32{pbase.RIDE_SHARE}
-	sxServerAddress , rerr := sxutil.RegisterNode(*nodesrv, "HarmoProvider", channelTypes, nil)
+	sxServerAddress, rerr := sxutil.RegisterNode(*nodesrv, "HarmoProvider", channelTypes, nil)
 	if rerr != nil {
 		log.Fatal("Can't register node ", rerr)
 	}
-	log.Printf("Connecting SynerexServer at [%s]\n",sxServerAddress)
+	log.Printf("Connecting SynerexServer at [%s]\n", sxServerAddress)
 
 	go sxutil.HandleSigInt()
 	sxutil.RegisterDeferFunction(sxutil.UnRegisterNode)
@@ -243,24 +241,26 @@ func main() {
 		os.Exit(1)
 	}
 
+	allowCorsServer := &CustomServer{ioserv}
+
 	client := sxutil.GrpcConnectServer(sxServerAddress) // if there is server address change, we should do it!
 
 	argJson := fmt.Sprintf("{Client:Map:RIDE}")
 	rideClient := sxutil.NewSXServiceClient(client, pbase.RIDE_SHARE, argJson)
 
-//	argJson2 := fmt.Sprintf("{Client:Map:PT}")
-//	pt_client := sxutil.NewSXServiceClient(client, pbase.PT_SERVICE, argJson2)
+	//	argJson2 := fmt.Sprintf("{Client:Map:PT}")
+	//	pt_client := sxutil.NewSXServiceClient(client, pbase.PT_SERVICE, argJson2)
 
 	wg.Add(1)
 	go subscribeRideSupply(rideClient)
-//	wg.Add(1)
-//	go subscribePTSupply(pt_client)
+	//	wg.Add(1)
+	//	go subscribePTSupply(pt_client)
 
 	go monitorStatus() // keep status
 
 	serveMux := http.NewServeMux()
 
-	serveMux.Handle("/socket.io/", ioserv)
+	serveMux.Handle("/socket.io/", allowCorsServer)
 	serveMux.HandleFunc("/", assetsFileHandler)
 
 	log.Printf("Starting Harmoware VIS  Provider %s  on port %d", version, *port)
@@ -271,4 +271,18 @@ func main() {
 
 	wg.Wait()
 
+}
+
+type CustomServer struct {
+	Server *gosocketio.Server
+}
+
+// ServeHTTP é a funcção que irá substituir o CORS default do serviço
+func (s *CustomServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	origin := r.Header.Get("Origin")
+	log.Println(origin)
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	s.Server.ServeHTTP(w, r)
 }

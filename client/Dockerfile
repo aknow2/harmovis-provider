@@ -1,0 +1,6 @@
+FROM node:12.4.0-alpine
+
+WORKDIR /app
+
+ENV HOST 0.0.0.0
+EXPOSE 3000
