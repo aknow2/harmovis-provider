@@ -1,0 +1,64 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+message MovingFeatures {
+  TBoundedBy boundedBy = 1;
+  repeated Member member = 2;
+  Header header = 3;
+  Foliation foliation = 4;
+}
+
+message TBoundedBy {
+  message EnvelopeWithTimePeriod {
+    string srsName = 1;
+    repeated float lowerCorner = 2; // left bottom lat lon
+    repeated float upperCorner = 3; // top right lat lon
+    google.protobuf.Timestamp beginPosition = 4; // begin time 
+    google.protobuf.Timestamp endPosition = 5; // end time
+  }
+}
+
+message Member {
+  message MovingFeature {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+  }
+}
+
+message Header {
+  message VaryingAttrDefs {
+    repeated AttrDef attrDef= 1;
+  }
+}
+
+message AttrDef {
+  string name = 1; 
+  repeated string simpleType = 2; // enum
+  string attrAnnotation = 3;
+}
+
+message Foliation {
+  OrderType orderType = 1;
+  repeated AbstractTrajectory trajectory = 2;
+}
+
+enum OrderType{
+  Time = 0;
+  Sequential = 1;
+}
+
+message AbstractTrajectory {
+  string id = 1;
+  string mfIdRef = 2;  // MovingFeature id ref
+  uint64 start = 3;
+  uint64 end = 4;
+  repeated float posList = 5; // lat lon list
+  repeated string attr = 6; // 
+  string interpolation = 7; // enum Lininear
+  LinearTrajectory linearTrajectory = 8;
+}
+
+message LinearTrajectory {
+  string interpolation = 1; 
+}
