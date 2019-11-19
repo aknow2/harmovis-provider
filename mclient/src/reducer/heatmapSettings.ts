@@ -15,7 +15,7 @@ const initialState: HeatmapState = {
   selectedType: HeatmapType.Hexagon,
   enabledHeatmap: true,
   gridSize: 400,
-  particleCount: 1000,
+  particleCount: 10,
   extruded: true
 };
 

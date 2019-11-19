@@ -99,7 +99,7 @@ class App extends Container {
       if(startIndex < propsoperation.length){
         setMovesbase.push(Object.assign({}, movesbasedata[i], {
             operation: propsoperation.slice(startIndex), departuretime
-	}));
+				}));
         dataModify = true;  
       }else{
         dataModify = true;
@@ -135,7 +135,7 @@ class App extends Container {
     
     render() {
 	const props = this.props;
-	const { actions, clickedObject, inputFileName, viewport, deoptsData, loading,
+	const { actions, clickedObject, viewport, loading,
 		routePaths, lightSettings, movesbase, movedData } = props;
 //	const { movesFileName } = inputFileName;
 	const optionVisible = false;

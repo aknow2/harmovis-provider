@@ -3,7 +3,7 @@ import "google/protobuf/timestamp.proto";
 
 message MovingFeatures {
   TBoundedBy boundedBy = 1;
-  repeated Member member = 2;
+  repeated Member members = 2;
   Header header = 3;
   Foliation foliation = 4;
 }
@@ -27,9 +27,7 @@ message Member {
 }
 
 message Header {
-  message VaryingAttrDefs {
-    repeated AttrDef attrDef= 1;
-  }
+  repeated AttrDef VaryingAttrDefs= 1;
 }
 
 message AttrDef {

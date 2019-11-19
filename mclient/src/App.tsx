@@ -58,7 +58,7 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
   componentDidMount() {
     const { actions, particleCount } = this.props;
     if (actions) {
-      actions.setMovesBase(createMovesBaseList(particleCount));
+      // actions.setMovesBase(createMovesBaseList(particleCount));
       actions.setViewport({
         ...this.props.viewport,
         width: window.screen.width,

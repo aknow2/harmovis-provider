@@ -1,22 +1,21 @@
-import { all, fork, call, take } from 'redux-saga/effects';
+import { all, fork, call, take, select, put } from 'redux-saga/effects';
 import io from 'socket.io-client';
 import { eventChannel } from 'redux-saga';
+import { Actions as HarmovisActions } from 'harmoware-vis';
 
 const connectSocket = () => {
-  const socket = io('http://localhost:10080');
-  debugger;
   return new Promise(resolve => {
-    debugger;
+    const socket = io('http://localhost:10080');
     socket.on('connect', () => {
-      debugger;
       resolve(socket);
     });
   });
 };
 function createSocketChannel(socket: SocketIOClient.Socket) {
   return eventChannel(emit => {
-    const eventHandler = event => {
-      console.log(event);
+    const eventHandler = (socketData: string) => {
+      const obj = JSON.parse(socketData);
+      emit(obj);
     };
     const errorHandler = errorEvent => {
       emit(new Error(errorEvent.reason));
@@ -30,18 +29,71 @@ function createSocketChannel(socket: SocketIOClient.Socket) {
   });
 }
 
+interface SocketData {
+  mtype: any;
+  id: any;
+  lat: number;
+  lon: number;
+  angle: number;
+  speed: number;
+}
+
+function* updateMovesObject(socketData: SocketData) {
+  const state = yield select();
+  const { mtype, id, lat, lon, angle, speed } = socketData;
+  const time = Date.now() / 1000;
+  let hit = false;
+  const movesbasedata = [...state.base.movesbase];
+  const setMovesbase = [];
+
+  for (let i = 0, lengthi = movesbasedata.length; i < lengthi; i += 1) {
+    const setMovedata = movesbasedata[i];
+    if (mtype === setMovedata.mtype && id === setMovedata.id) {
+      hit = true;
+      setMovedata.arrivaltime = time;
+      setMovedata.operation.push({
+        elapsedtime: time,
+        position: [lon, lat, 0],
+        angle,
+        speed
+      });
+    }
+    setMovesbase.push(setMovedata);
+  }
+  if (!hit) {
+    setMovesbase.push({
+      mtype,
+      id,
+      departuretime: time,
+      arrivaltime: time,
+      operation: [
+        {
+          elapsedtime: time,
+          position: [lon, lat, 0],
+          angle,
+          speed
+        }
+      ]
+    });
+  }
+  debugger;
+  yield put(HarmovisActions.updateMovesBase(setMovesbase));
+}
+
 function* watchOnData() {
   const socket = yield call(connectSocket);
   const socketChannel = yield call(createSocketChannel, socket);
-  try {
-    const payload = yield take(socketChannel);
-    console.log(payload);
-  } catch (e) {
-    console.log(e);
+  while (true) {
+    try {
+      const payload = yield take(socketChannel);
+      yield call(updateMovesObject, payload);
+    } catch (e) {
+      console.log(e);
+      socketChannel.close();
+    }
   }
 }
 
 export default function* rootSaga() {
-  debugger;
   yield all([fork(watchOnData)]);
 }

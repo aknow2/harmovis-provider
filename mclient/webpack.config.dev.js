@@ -5,7 +5,7 @@ const baseConfig = require('./webpack.config.base.js');
 
 module.exports = merge(baseConfig, {
   mode: "development",
-  devtool: "source-map",
+  devtool: "inline-source-map",
   output: {
     path: path.resolve(__dirname, "dist/"),
     publicPath: "/dist/",
