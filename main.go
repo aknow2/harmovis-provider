@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	mf "harmovis/mf"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	gosocketio "github.com/mtfelian/golang-socketio"
 	"github.com/mtfelian/golang-socketio/transport"
 	fleet "github.com/synerex/proto_fleet"
@@ -20,6 +23,8 @@ import (
 	pbase "github.com/synerex/synerex_proto"
 	sxutil "github.com/synerex/synerex_sxutil"
 )
+
+const OK = "OK"
 
 // Harmoware Vis-Synerex provider provides map information to Web Service through socket.io.
 
@@ -146,6 +151,11 @@ type MapMarker struct {
 	speed int32   `json:"speed"`
 }
 
+type PeriodDate struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
 func (m *MapMarker) GetJson() string {
 	s := fmt.Sprintf("{\"mtype\":%d,\"id\":%d,\"lat\":%f,\"lon\":%f,\"angle\":%f,\"speed\":%d}",
 		m.mtype, m.id, m.lat, m.lon, m.angle, m.speed)
@@ -185,6 +195,120 @@ func subscribeRideSupply(client *sxutil.SXServiceClient) {
 			log.Printf("Reconnect server [%s]\n", sxServerAddress)
 			client.Client = newClt
 		}
+	}
+}
+
+func requirePeriodDate(server *gosocketio.Server) {
+	fmt.Println("ready demand_period_date")
+	server.On("demand_period_date", func() {
+		fmt.Println("demand_period_date")
+		date := &PeriodDate{
+			Start: "2018-12-10T00:00:00",
+			End:   "2019-12-10T00:00:00",
+		}
+		bytes, _ := json.Marshal(date)
+		fmt.Println(string(bytes))
+		server.BroadcastToAll("period_date", string(bytes))
+	})
+}
+
+func onDemandMovingFeatures(c *gosocketio.Channel, param interface{}) interface{} {
+	log.Printf("Received SEND on %s with ", c.Id())
+	fmt.Println("demand_moving_features")
+	begin := time.Date(2018, time.December, 31, 12, 13, 24, 0, time.UTC)
+	end := time.Date(2019, time.December, 31, 12, 13, 24, 0, time.UTC)
+	bounded := &mf.TBoundedBy{
+		EnvelopeWithTimePeriod: &mf.EnvelopeWithTimePeriod{
+			SrsName:     "EPSG:4326",
+			LowerCorner: []float32{34.9821, 136.6136},
+			UpperCorner: []float32{34.3300, 137.1933},
+			BeginPosition: &timestamp.Timestamp{
+				Seconds: begin.Unix(),
+			},
+			EndPosition: &timestamp.Timestamp{
+				Seconds: end.Unix(),
+			},
+		},
+	}
+
+	header := &mf.Header{
+		VaryingAttrDefs: []*mf.AttrDef{
+			&mf.AttrDef{
+				Name:       "CarType",
+				SimpleType: []string{"Bus", "Taxi"},
+			},
+			&mf.AttrDef{
+				Name:       "Fuel",
+				SimpleType: []string{"Gass", "Electric"},
+			},
+		},
+	}
+
+	memberA := &mf.Member{
+		MovingFeature: &mf.MovingFeature{
+			Id:          "a1",
+			Name:        "AA-AAAA",
+			Description: "Mie kotu",
+		},
+	}
+	memberB := &mf.Member{
+		MovingFeature: &mf.MovingFeature{
+			Id:          "b1",
+			Name:        "AA-AAAA",
+			Description: "Kintetsu",
+		},
+	}
+
+	trajectory1 := &mf.AbstractTrajectory{
+		Id:            "ZZZZ_1",
+		MfIdRef:       "a1",
+		PosList:       []float32{34.9821, 136.6136, 349822, 136.614},
+		Start:         0,
+		End:           500,
+		Attr:          []string{"Taxi", "Gass"},
+		Interpolation: "Linear",
+	}
+	trajectory2 := &mf.AbstractTrajectory{
+		Id:            "ZZZZ_2",
+		MfIdRef:       "a1",
+		PosList:       []float32{34.9822, 136.614, 349825, 136.6145},
+		Start:         500,
+		End:           500,
+		Attr:          []string{"Taxi", "Gass"},
+		Interpolation: "Linear",
+	}
+	trajectory3 := &mf.AbstractTrajectory{
+		Id:            "XXXXX_1",
+		MfIdRef:       "b2",
+		PosList:       []float32{34.9822, 136.614, 349825, 136.6145},
+		Start:         500,
+		End:           500,
+		Attr:          []string{"Bus", "Electric"},
+		Interpolation: "Linear",
+	}
+
+	foliation := &mf.Foliation{
+		OrderType: mf.OrderType_Time,
+		Trajectory: []*mf.AbstractTrajectory{
+			trajectory1,
+			trajectory2,
+			trajectory3,
+		},
+	}
+	movingFeatures := mf.MovingFeatures{
+		BoundedBy: bounded,
+		Header:    header,
+		Members:   []*mf.Member{memberA, memberB},
+		Foliation: foliation,
+	}
+	ioserv.BroadcastToAll("moving_features", movingFeatures)
+	return OK
+}
+
+func demandMovingFeature(server *gosocketio.Server) {
+	fmt.Println("ready demand_moving_features")
+	if err := server.On("demand_moving_features", onDemandMovingFeatures); err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -241,7 +365,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	allowCorsServer := &CustomServer{ioserv}
+	allowCorsServer := &CorsServer{ioserv}
 
 	client := sxutil.GrpcConnectServer(sxServerAddress) // if there is server address change, we should do it!
 
@@ -258,6 +382,8 @@ func main() {
 
 	go monitorStatus() // keep status
 
+	go demandMovingFeature(ioserv)
+
 	serveMux := http.NewServeMux()
 
 	serveMux.Handle("/socket.io/", allowCorsServer)
@@ -273,16 +399,13 @@ func main() {
 
 }
 
-type CustomServer struct {
+type CorsServer struct {
 	Server *gosocketio.Server
 }
 
-// ServeHTTP é a funcção que irá substituir o CORS default do serviço
-func (s *CustomServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+func (s *CorsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	origin := r.Header.Get("Origin")
-	log.Println(origin)
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	s.Server.ServeHTTP(w, r)
 }

@@ -1,4 +1,4 @@
 #!/bin/sh
 
 go build
-./harmovis-provider -nodesrv nodeserv:9990
+./harmovis -nodesrv nodeserv:9990

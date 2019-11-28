@@ -9,21 +9,25 @@ message MovingFeatures {
 }
 
 message TBoundedBy {
-  message EnvelopeWithTimePeriod {
-    string srsName = 1;
-    repeated float lowerCorner = 2; // left bottom lat lon
-    repeated float upperCorner = 3; // top right lat lon
-    google.protobuf.Timestamp beginPosition = 4; // begin time 
-    google.protobuf.Timestamp endPosition = 5; // end time
-  }
+  EnvelopeWithTimePeriod envelopeWithTimePeriod = 1;
+}
+
+message EnvelopeWithTimePeriod {
+  string srsName = 1;
+  repeated float lowerCorner = 2; // left bottom lat lon
+  repeated float upperCorner = 3; // top right lat lon
+  google.protobuf.Timestamp beginPosition = 4; // begin time 
+  google.protobuf.Timestamp endPosition = 5; // end time
 }
 
 message Member {
-  message MovingFeature {
-    string id = 1;
-    string name = 2;
-    string description = 3;
-  }
+  MovingFeature movingFeature = 1;
+}
+
+message MovingFeature {
+  string id = 1;
+  string name = 2;
+  string description = 3;
 }
 
 message Header {
