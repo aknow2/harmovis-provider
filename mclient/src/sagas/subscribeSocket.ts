@@ -7,6 +7,7 @@ const connectSocket = () => {
   return new Promise(resolve => {
     const socket = io('http://localhost:10080');
     socket.on('connect', () => {
+      console.log('connected socket');
       resolve(socket);
     });
   });
@@ -20,11 +21,24 @@ function createSocketChannel(socket: SocketIOClient.Socket) {
     const errorHandler = errorEvent => {
       emit(new Error(errorEvent.reason));
     };
+
+    const periodDateHandler = (periodStr: string) => {
+      console.log(periodStr);
+    };
+    const movingFeaturesHandler = (periodStr: string) => {
+      debugger;
+      console.log(periodStr);
+    };
     socket.on('event', eventHandler);
+    socket.on('period_date', periodDateHandler);
+    socket.on('moving_features', movingFeaturesHandler);
     socket.on('error', errorHandler);
     const unsubscribe = () => {
-      socket.off('ping', eventHandler);
+      socket.off('event', eventHandler);
+      socket.off('period_date', periodDateHandler);
+      socket.off('moving_features', movingFeaturesHandler);
     };
+    socket.emit('demand_moving_features', 'test');
     return unsubscribe;
   });
 }
@@ -45,7 +59,6 @@ function* updateMovesObject(socketData: SocketData) {
   let hit = false;
   const movesbasedata = [...state.base.movesbase];
   const setMovesbase = [];
-
   for (let i = 0, lengthi = movesbasedata.length; i < lengthi; i += 1) {
     const setMovedata = movesbasedata[i];
     if (mtype === setMovedata.mtype && id === setMovedata.id) {
@@ -76,7 +89,6 @@ function* updateMovesObject(socketData: SocketData) {
       ]
     });
   }
-  debugger;
   yield put(HarmovisActions.updateMovesBase(setMovesbase));
 }
 
