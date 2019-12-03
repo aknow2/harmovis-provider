@@ -1,7 +1,26 @@
-import { all, fork, call, take, select, put } from 'redux-saga/effects';
+import {
+  all,
+  fork,
+  call,
+  take,
+  select,
+  put,
+  takeEvery
+} from 'redux-saga/effects';
 import io from 'socket.io-client';
 import { eventChannel } from 'redux-saga';
-import { Actions as HarmovisActions } from 'harmoware-vis';
+import { Actions as HarmovisActions, Movesbase } from 'harmoware-vis';
+import { MovingFeatures } from '../constants/movingFeatures_pb';
+import {
+  updateFromMovingFeatures,
+  demandMovingFeatures,
+  PeriodDate,
+  setSocketClient,
+  demandBounded,
+  setBounded
+} from '../actions/actions';
+
+const UPDATE_FLEET_OBJECT = 'UPDATE_FLEET_OBJECT';
 
 const connectSocket = () => {
   return new Promise(resolve => {
@@ -12,38 +31,49 @@ const connectSocket = () => {
     });
   });
 };
+
 function createSocketChannel(socket: SocketIOClient.Socket) {
   return eventChannel(emit => {
-    const eventHandler = (socketData: string) => {
+    const fleetHandler = (socketData: string) => {
       const obj = JSON.parse(socketData);
-      emit(obj);
+      emit({
+        type: UPDATE_FLEET_OBJECT,
+        payload: obj
+      });
     };
     const errorHandler = errorEvent => {
       emit(new Error(errorEvent.reason));
     };
 
-    const periodDateHandler = (periodStr: string) => {
-      console.log(periodStr);
+    const boundedByHandler = (bounded: any) => {
+      emit(
+        setBounded({
+          start: new Date(bounded.beginPosition.seconds * 1000),
+          end: new Date(bounded.endPosition.seconds * 1000),
+          lowerCorner: bounded.lowerCorner,
+          upperCorner: bounded.upperCorner
+        })
+      );
     };
-    const movingFeaturesHandler = (periodStr: string) => {
-      debugger;
-      console.log(periodStr);
+    const movingFeaturesHandler = (movingFeatures: MovingFeatures) => {
+      emit(updateFromMovingFeatures(movingFeatures));
     };
-    socket.on('event', eventHandler);
-    socket.on('period_date', periodDateHandler);
+    socket.on('fleet', fleetHandler);
+    socket.on('bounded_by', boundedByHandler);
     socket.on('moving_features', movingFeaturesHandler);
     socket.on('error', errorHandler);
     const unsubscribe = () => {
-      socket.off('event', eventHandler);
-      socket.off('period_date', periodDateHandler);
+      socket.off('fleet', fleetHandler);
+      socket.off('period_date', boundedByHandler);
       socket.off('moving_features', movingFeaturesHandler);
     };
-    socket.emit('demand_moving_features', 'test');
+
+    socket.emit('demand_bounded_by', {});
     return unsubscribe;
   });
 }
 
-interface SocketData {
+interface FleetData {
   mtype: any;
   id: any;
   lat: number;
@@ -52,9 +82,54 @@ interface SocketData {
   speed: number;
 }
 
-function* updateMovesObject(socketData: SocketData) {
+function* doUpdateFromMovingFeatures(action) {
+  const { boundedBy, foliation } = action.payload;
+  const startTime = boundedBy.beginPosition.seconds;
+  const trajectories = foliation.trajectory as any[];
+  const movesbases = [];
+  trajectories.forEach(trajectory => {
+    const tstart = trajectory.start ? trajectory.start : 0;
+    const departuretime = startTime + tstart;
+    const arrivaltime = startTime + trajectory.end;
+    const movebase = movesbases.find(
+      m => m.id === trajectory.mfIdRef
+    ) as Movesbase;
+    const { posList } = trajectory;
+    if (movebase) {
+      movebase.departuretime =
+        departuretime < movebase.departuretime
+          ? departuretime
+          : movebase.departuretime;
+      movebase.arrivaltime =
+        arrivaltime > movebase.arrivaltime ? arrivaltime : movebase.arrivaltime;
+      movebase.operation.push({
+        elapsedtime: arrivaltime,
+        position: [posList[2], posList[3], 0]
+      } as any);
+    } else {
+      movesbases.push({
+        id: trajectory.mfIdRef,
+        departuretime,
+        arrivaltime,
+        operation: [
+          {
+            elapsedtime: 0,
+            position: [posList[0], posList[1], 0]
+          },
+          {
+            elapsedtime: arrivaltime,
+            position: [posList[2], posList[3], 0]
+          }
+        ]
+      });
+    }
+  });
+  yield put(HarmovisActions.updateMovesBase(movesbases));
+}
+
+function* updateFleetObject({ type, payload }) {
   const state = yield select();
-  const { mtype, id, lat, lon, angle, speed } = socketData;
+  const { mtype, id, lat, lon, angle, speed } = payload;
   const time = Date.now() / 1000;
   let hit = false;
   const movesbasedata = [...state.base.movesbase];
@@ -94,18 +169,43 @@ function* updateMovesObject(socketData: SocketData) {
 
 function* watchOnData() {
   const socket = yield call(connectSocket);
+  yield put(setSocketClient(socket));
   const socketChannel = yield call(createSocketChannel, socket);
   while (true) {
     try {
-      const payload = yield take(socketChannel);
-      yield call(updateMovesObject, payload);
+      const action = yield take(socketChannel);
+      yield put(action);
     } catch (e) {
-      console.log(e);
       socketChannel.close();
     }
   }
 }
 
+function* doDemandMovingFeatures(action) {
+  const state = yield select();
+  const { client } = state.socket;
+  const periodDate = action.payload as PeriodDate;
+  const requirePeriod = {
+    start: periodDate.start.getTime() / 1000,
+    end: periodDate.end.getTime() / 1000,
+    lowerCorner: [136.9536, 34.9721],
+    upperCorner: [137.1933, 34.9999]
+  };
+  client.emit('demand_moving_features', requirePeriod);
+}
+
+function* doDemandBounded(action) {
+  const state = yield select();
+  const { client } = state.socket;
+  client.emit('demand_bounded_by', {});
+}
+
 export default function* rootSaga() {
-  yield all([fork(watchOnData)]);
+  yield all([
+    takeEvery(UPDATE_FLEET_OBJECT, updateFleetObject),
+    takeEvery(updateFromMovingFeatures, doUpdateFromMovingFeatures),
+    takeEvery(demandMovingFeatures, doDemandMovingFeatures),
+    takeEvery(demandBounded, doDemandBounded),
+    fork(watchOnData)
+  ]);
 }

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	mf "harmovis/mf"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/lithammer/shortuuid/v3"
 	gosocketio "github.com/mtfelian/golang-socketio"
 	"github.com/mtfelian/golang-socketio/transport"
 	fleet "github.com/synerex/proto_fleet"
@@ -51,7 +52,7 @@ func handleFleetMessage(sv *gosocketio.Server, param interface{}) {
 	for _, v := range bmap["vehicles"].([]interface{}) {
 		m, _ := v.(map[string]interface{})
 		s := toJSON(m, utime)
-		sv.BroadcastToAll("event", s)
+		sv.BroadcastToAll("fleet", s)
 	}
 }
 
@@ -151,9 +152,36 @@ type MapMarker struct {
 	speed int32   `json:"speed"`
 }
 
-type PeriodDate struct {
-	Start string `json:"start"`
-	End   string `json:"end"`
+func createRandomAbstractTrajectory(member *mf.Member, count int, lowerCorner []float32, upperCorner []float32) []*mf.AbstractTrajectory {
+	id := member.MovingFeature.Id
+	trajectories := []*mf.AbstractTrajectory{}
+	latRange := []float32{lowerCorner[1], upperCorner[1]}
+	lonRange := []float32{lowerCorner[0], upperCorner[0]}
+
+	baseLat := (rand.Float32() * (latRange[1] - latRange[0])) + latRange[0]
+	baseLon := (rand.Float32() * (lonRange[1] - lonRange[0])) + lonRange[0]
+	baseTime := uint64(0)
+	timeRange := uint64(200)
+
+	for i := 0; i < count; i++ {
+		nextLat := baseLat + (2*rand.Float32()-1)/1000
+		nextLon := baseLon + (2*rand.Float32()-1)/1000
+		mfid := fmt.Sprintf("%s-%d", id, i)
+		trajectory := &mf.AbstractTrajectory{
+			Id:            mfid,
+			MfIdRef:       id,
+			PosList:       []float32{baseLon, baseLat, nextLon, nextLat},
+			Start:         baseTime,
+			End:           baseTime + timeRange,
+			Attr:          []string{"Taxi", "Gass"},
+			Interpolation: "Linear",
+		}
+		baseTime = baseTime + timeRange
+		baseLat = nextLat
+		baseLon = nextLon
+		trajectories = append(trajectories, trajectory)
+	}
+	return trajectories
 }
 
 func (m *MapMarker) GetJson() string {
@@ -198,36 +226,48 @@ func subscribeRideSupply(client *sxutil.SXServiceClient) {
 	}
 }
 
-func requirePeriodDate(server *gosocketio.Server) {
-	fmt.Println("ready demand_period_date")
-	server.On("demand_period_date", func() {
-		fmt.Println("demand_period_date")
-		date := &PeriodDate{
-			Start: "2018-12-10T00:00:00",
-			End:   "2019-12-10T00:00:00",
-		}
-		bytes, _ := json.Marshal(date)
-		fmt.Println(string(bytes))
-		server.BroadcastToAll("period_date", string(bytes))
-	})
+func onDemandPeriodDate(c *gosocketio.Channel, param interface{}) {
+	fmt.Println("demand_bounded_by")
+	end := time.Now()
+	date := &mf.TBoundedBy{
+		BeginPosition: &timestamp.Timestamp{
+			Seconds: end.AddDate(-1, 0, 0).Unix(),
+		},
+		EndPosition: &timestamp.Timestamp{
+			Seconds: end.Unix(),
+		},
+		LowerCorner: []float32{136.9536, 34.9721},
+		UpperCorner: []float32{137.1933, 34.9999},
+	}
+
+	ioserv.BroadcastToAll("bounded_by", date)
 }
 
-func onDemandMovingFeatures(c *gosocketio.Channel, param interface{}) interface{} {
+func demandPeriodDate(server *gosocketio.Server) {
+	fmt.Println("ready demand_bounded_by")
+	server.On("demand_bounded_by", onDemandPeriodDate)
+}
+
+type DemandMovingFeatures struct {
+	Start        int64     `json:"start"`
+	End          int64     `json:"end"`
+	LowerCorner  []float32 `json:"lowerCorner"`
+	UppderCorner []float32 `json:"upperCorner"`
+}
+
+func onDemandMovingFeatures(c *gosocketio.Channel, param DemandMovingFeatures) {
 	log.Printf("Received SEND on %s with ", c.Id())
+	log.Println(param)
 	fmt.Println("demand_moving_features")
-	begin := time.Date(2018, time.December, 31, 12, 13, 24, 0, time.UTC)
-	end := time.Date(2019, time.December, 31, 12, 13, 24, 0, time.UTC)
 	bounded := &mf.TBoundedBy{
-		EnvelopeWithTimePeriod: &mf.EnvelopeWithTimePeriod{
-			SrsName:     "EPSG:4326",
-			LowerCorner: []float32{34.9821, 136.6136},
-			UpperCorner: []float32{34.3300, 137.1933},
-			BeginPosition: &timestamp.Timestamp{
-				Seconds: begin.Unix(),
-			},
-			EndPosition: &timestamp.Timestamp{
-				Seconds: end.Unix(),
-			},
+		SrsName:     "EPSG:4326",
+		LowerCorner: param.LowerCorner,
+		UpperCorner: param.LowerCorner,
+		BeginPosition: &timestamp.Timestamp{
+			Seconds: param.Start,
+		},
+		EndPosition: &timestamp.Timestamp{
+			Seconds: param.End,
 		},
 	}
 
@@ -243,7 +283,6 @@ func onDemandMovingFeatures(c *gosocketio.Channel, param interface{}) interface{
 			},
 		},
 	}
-
 	memberA := &mf.Member{
 		MovingFeature: &mf.MovingFeature{
 			Id:          "a1",
@@ -251,58 +290,34 @@ func onDemandMovingFeatures(c *gosocketio.Channel, param interface{}) interface{
 			Description: "Mie kotu",
 		},
 	}
-	memberB := &mf.Member{
-		MovingFeature: &mf.MovingFeature{
-			Id:          "b1",
-			Name:        "AA-AAAA",
-			Description: "Kintetsu",
-		},
+	members := []*mf.Member{}
+	for i := 0; i < 100; i++ {
+		members = append(members, &mf.Member{
+			MovingFeature: &mf.MovingFeature{
+				Id:          shortuuid.New(),
+				Name:        shortuuid.New(),
+				Description: "Kintetsu",
+			},
+		})
 	}
 
-	trajectory1 := &mf.AbstractTrajectory{
-		Id:            "ZZZZ_1",
-		MfIdRef:       "a1",
-		PosList:       []float32{34.9821, 136.6136, 349822, 136.614},
-		Start:         0,
-		End:           500,
-		Attr:          []string{"Taxi", "Gass"},
-		Interpolation: "Linear",
-	}
-	trajectory2 := &mf.AbstractTrajectory{
-		Id:            "ZZZZ_2",
-		MfIdRef:       "a1",
-		PosList:       []float32{34.9822, 136.614, 349825, 136.6145},
-		Start:         500,
-		End:           500,
-		Attr:          []string{"Taxi", "Gass"},
-		Interpolation: "Linear",
-	}
-	trajectory3 := &mf.AbstractTrajectory{
-		Id:            "XXXXX_1",
-		MfIdRef:       "b2",
-		PosList:       []float32{34.9822, 136.614, 349825, 136.6145},
-		Start:         500,
-		End:           500,
-		Attr:          []string{"Bus", "Electric"},
-		Interpolation: "Linear",
+	count := 100
+	trajectories := createRandomAbstractTrajectory(memberA, count, param.LowerCorner, param.UppderCorner)
+	for _, v := range members {
+		trajectories = append(trajectories, createRandomAbstractTrajectory(v, count, param.LowerCorner, param.UppderCorner)...)
 	}
 
 	foliation := &mf.Foliation{
-		OrderType: mf.OrderType_Time,
-		Trajectory: []*mf.AbstractTrajectory{
-			trajectory1,
-			trajectory2,
-			trajectory3,
-		},
+		OrderType:  mf.OrderType_Time,
+		Trajectory: trajectories,
 	}
 	movingFeatures := mf.MovingFeatures{
 		BoundedBy: bounded,
 		Header:    header,
-		Members:   []*mf.Member{memberA, memberB},
+		Members:   append(members, memberA),
 		Foliation: foliation,
 	}
 	ioserv.BroadcastToAll("moving_features", movingFeatures)
-	return OK
 }
 
 func demandMovingFeature(server *gosocketio.Server) {
@@ -383,6 +398,7 @@ func main() {
 	go monitorStatus() // keep status
 
 	go demandMovingFeature(ioserv)
+	go demandPeriodDate(ioserv)
 
 	serveMux := http.NewServeMux()
 

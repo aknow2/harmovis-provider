@@ -23,6 +23,7 @@ import { HeatmapState } from './reducer/heatmapSettings';
 import ToggleHeatMap from './container/ToggleHeatMap';
 import Toggle3DHeatmap from './container/Toggle3DHeatmap';
 import HeatmapTypeSelection from './container/HeatmapSelection';
+import DatePicker from './container/DatePicker';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1IjoidG1rbnltIiwiYSI6ImNrMTd0N3hzcDFmcjkzaHAzNng3dGsxb3kifQ.EBD9eRBGp5zJWcu1Yk4wgQ';
@@ -123,6 +124,9 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
             <li>
               <AddMinutesButton addMinutes={-5} actions={actions} />
               <AddMinutesButton addMinutes={5} actions={actions} />
+            </li>
+            <li>
+              <DatePicker />
             </li>
             <li>
               elapsed time:

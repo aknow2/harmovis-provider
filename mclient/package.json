@@ -28,6 +28,8 @@
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.16.0",
     "eslint-plugin-react-hooks": "^2.2.0",
+    "grpc-tools": "^1.8.0",
+    "grpc_tools_node_protoc_ts": "^2.5.8",
     "html-loader": "^0.5.5",
     "html-webpack-plugin": "^3.2.0",
     "node": "^12.13.0",
