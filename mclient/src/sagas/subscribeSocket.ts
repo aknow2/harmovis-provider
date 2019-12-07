@@ -14,17 +14,22 @@ import { MovingFeatures } from '../constants/movingFeatures_pb';
 import {
   updateFromMovingFeatures,
   demandMovingFeatures,
-  PeriodDate,
   setSocketClient,
   demandBounded,
-  setBounded
+  setBounded,
+  fetchInitialData,
+  Bounded,
+  setStartDate
 } from '../actions/actions';
+import { TimeLapseState } from '../reducer/timelapseSettings';
+import { DurationUnit } from '../constants/timelapse';
 
 const UPDATE_FLEET_OBJECT = 'UPDATE_FLEET_OBJECT';
+const socketUri = 'http://localhost:10080';
 
 const connectSocket = () => {
   return new Promise(resolve => {
-    const socket = io('http://localhost:10080');
+    const socket = io(socketUri);
     socket.on('connect', () => {
       console.log('connected socket');
       resolve(socket);
@@ -56,6 +61,8 @@ function createSocketChannel(socket: SocketIOClient.Socket) {
       );
     };
     const movingFeaturesHandler = (movingFeatures: MovingFeatures) => {
+      console.log('recived new moving features');
+      console.log(movingFeatures);
       emit(updateFromMovingFeatures(movingFeatures));
     };
     socket.on('fleet', fleetHandler);
@@ -68,7 +75,6 @@ function createSocketChannel(socket: SocketIOClient.Socket) {
       socket.off('moving_features', movingFeaturesHandler);
     };
 
-    socket.emit('demand_bounded_by', {});
     return unsubscribe;
   });
 }
@@ -83,6 +89,7 @@ interface FleetData {
 }
 
 function* doUpdateFromMovingFeatures(action) {
+  console.log('doUpdateFromMovingFeatures');
   const { boundedBy, foliation } = action.payload;
   const startTime = boundedBy.beginPosition.seconds;
   const trajectories = foliation.trajectory as any[];
@@ -171,6 +178,7 @@ function* watchOnData() {
   const socket = yield call(connectSocket);
   yield put(setSocketClient(socket));
   const socketChannel = yield call(createSocketChannel, socket);
+  yield put(demandBounded());
   while (true) {
     try {
       const action = yield take(socketChannel);
@@ -184,12 +192,12 @@ function* watchOnData() {
 function* doDemandMovingFeatures(action) {
   const state = yield select();
   const { client } = state.socket;
-  const periodDate = action.payload as PeriodDate;
+  const bounded = action.payload as Bounded;
   const requirePeriod = {
-    start: periodDate.start.getTime() / 1000,
-    end: periodDate.end.getTime() / 1000,
-    lowerCorner: [136.9536, 34.9721],
-    upperCorner: [137.1933, 34.9999]
+    start: bounded.start.getTime() / 1000,
+    end: bounded.end.getTime() / 1000,
+    lowerCorner: bounded.lowerCorner,
+    upperCorner: bounded.upperCorner
   };
   client.emit('demand_moving_features', requirePeriod);
 }
@@ -200,12 +208,84 @@ function* doDemandBounded(action) {
   client.emit('demand_bounded_by', {});
 }
 
+const getMillsecFromDuration = (
+  duration: number,
+  unit: DurationUnit
+): number => {
+  let result = duration;
+  switch (unit) {
+    case DurationUnit.day:
+      result *= 24;
+      return getMillsecFromDuration(result, DurationUnit.hour);
+    case DurationUnit.hour:
+      result *= 60;
+      return getMillsecFromDuration(result, DurationUnit.min);
+    case DurationUnit.min:
+      result *= 60;
+      return getMillsecFromDuration(result, DurationUnit.seconds);
+    case DurationUnit.seconds:
+    default:
+      result *= 1000;
+      return result;
+  }
+};
+
+function* doSetStartDate(action) {
+  const state = yield select();
+  const bounded = action.payload as Bounded;
+  const { selectedStartDate } = state.timelapseSettings as TimeLapseState;
+  if (selectedStartDate == null) {
+    const startDate = bounded.start;
+    yield put(setStartDate(startDate));
+  }
+}
+
+function* monitorTimelapseSettings() {
+  let prevStartDate = null;
+  let prevDuration = null;
+  let prevUnit = null;
+  while (true) {
+    const state = yield select();
+    const timelapse = state.timelapseSettings as TimeLapseState;
+    const startDate = timelapse.selectedStartDate;
+    const unit = timelapse.selecttedDurationUnit;
+    const { duration } = timelapse;
+    if (
+      startDate &&
+      (startDate !== prevStartDate ||
+        unit !== prevUnit ||
+        prevDuration !== duration)
+    ) {
+      console.log('fetch new moving features');
+      const endDate = new Date(
+        startDate.getTime() + getMillsecFromDuration(duration, unit)
+      );
+      const bounded = {
+        start: startDate,
+        end: endDate,
+        lowerCorner: timelapse.lowerCorner,
+        upperCorner: timelapse.upperCorner
+      };
+      console.log(bounded);
+      yield put(setStartDate(startDate));
+      yield put(demandMovingFeatures(bounded));
+
+      prevDuration = duration;
+      prevUnit = unit;
+      prevStartDate = startDate;
+    }
+    yield take('*');
+  }
+}
+
 export default function* rootSaga() {
   yield all([
     takeEvery(UPDATE_FLEET_OBJECT, updateFleetObject),
     takeEvery(updateFromMovingFeatures, doUpdateFromMovingFeatures),
     takeEvery(demandMovingFeatures, doDemandMovingFeatures),
     takeEvery(demandBounded, doDemandBounded),
-    fork(watchOnData)
+    takeEvery(setBounded, doSetStartDate),
+    fork(watchOnData),
+    fork(monitorTimelapseSettings)
   ]);
 }

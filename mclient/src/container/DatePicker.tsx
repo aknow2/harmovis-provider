@@ -1,11 +1,14 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { TimeLapseState, DurationUnit } from '../reducer/timelapseSettings';
+import { TimeLapseState } from '../reducer/timelapseSettings';
+import { DurationUnit } from '../constants/timelapse';
 import * as actions from '../actions/actions';
 
 const dateString = (date: Date): string => {
   return date.toISOString().split('.')[0];
 };
+
+const defaultDate = new Date();
 
 const DatePicker: React.FC<any> = prop => {
   const state = useSelector<any, TimeLapseState>(st => {
@@ -14,9 +17,21 @@ const DatePicker: React.FC<any> = prop => {
   const dispatcher = useDispatch();
   const onChangeDateHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(ev.currentTarget.value);
-    debugger;
-    dispatcher(actions.changeBeginPosition(date));
+    dispatcher(actions.setStartDate(date));
   };
+  const onChangeDurationHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const duration = parseInt(ev.currentTarget.value, 10);
+    if (!Number.isNaN(duration)) {
+      dispatcher(actions.setDuration(duration));
+    }
+  };
+  const onChangeDurationUnitHandler = (
+    ev: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const unit = ev.currentTarget.value as DurationUnit;
+    dispatcher(actions.setDurationUnit(unit));
+  };
+  const date = state.selectedStartDate ? state.selectedStartDate : defaultDate;
   return (
     <div>
       <span>Date(begin position):</span>
@@ -24,14 +39,22 @@ const DatePicker: React.FC<any> = prop => {
         type="datetime-local"
         min={dateString(state.startDate)}
         max={dateString(state.endDate)}
-        defaultValue={dateString(state.selectedStartDate)}
+        value={dateString(date)}
         onInput={onChangeDateHandler}
+        onChange={onChangeDateHandler}
       />
       <div>
         <span>Duration(end position):</span>
         <div style={{ display: 'flex' }}>
-          <input type="number" defaultValue={state.duration} />
-          <select defaultValue={state.selecttedDurationUnit}>
+          <input
+            type="number"
+            value={state.duration}
+            onChange={onChangeDurationHandler}
+          />
+          <select
+            value={state.selecttedDurationUnit}
+            onChange={onChangeDurationUnitHandler}
+          >
             {Object.keys(DurationUnit).map(value => {
               return <option key={value} value={value} label={value} />;
             })}

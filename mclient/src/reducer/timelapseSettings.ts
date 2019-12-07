@@ -1,23 +1,16 @@
 import { isType } from 'typescript-fsa';
 import { Action } from 'redux';
 import * as actions from '../actions/actions';
+import { DurationUnit } from '../constants/timelapse';
 
 export interface TimeLapseState {
   selecttedDurationUnit: DurationUnit;
   startDate: Date;
   endDate: Date;
-  selectedStartDate: Date;
+  selectedStartDate: Date | null;
   duration: number;
   lowerCorner: number[];
   upperCorner: number[];
-}
-
-export enum DurationUnit {
-  seconds = 'secondes',
-  min = 'min',
-  hour = 'hour',
-  day = 'day',
-  month = 'month'
 }
 
 const initialState: TimeLapseState = {
@@ -25,7 +18,7 @@ const initialState: TimeLapseState = {
   duration: 60,
   startDate: new Date(),
   endDate: new Date(),
-  selectedStartDate: new Date(),
+  selectedStartDate: null,
   lowerCorner: [],
   upperCorner: []
 };
@@ -37,9 +30,29 @@ export default (state = initialState, action: Action): TimeLapseState => {
       ...state,
       startDate: payload.start,
       endDate: payload.end,
-      selectedStartDate: payload.start,
       lowerCorner: payload.lowerCorner,
       upperCorner: payload.upperCorner
+    };
+  }
+  if (isType(action, actions.setStartDate)) {
+    const { payload } = action;
+    return {
+      ...state,
+      selectedStartDate: payload
+    };
+  }
+  if (isType(action, actions.setDuration)) {
+    const { payload } = action;
+    return {
+      ...state,
+      duration: payload
+    };
+  }
+  if (isType(action, actions.setDurationUnit)) {
+    const { payload } = action;
+    return {
+      ...state,
+      selecttedDurationUnit: payload
     };
   }
   return state;

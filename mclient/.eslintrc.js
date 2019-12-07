@@ -50,6 +50,7 @@ module.exports = {
     "no-debugger": "off",
     'no-unused-vars': 'off',
     "react-hooks/rules-of-hooks": "error",
+    "import/prefer-default-export": "off",
     "react/jsx-filename-extension": [
       "error",
       {
