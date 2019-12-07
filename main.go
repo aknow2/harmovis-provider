@@ -226,7 +226,7 @@ func subscribeRideSupply(client *sxutil.SXServiceClient) {
 	}
 }
 
-func onDemandPeriodDate(c *gosocketio.Channel, param interface{}) {
+func onDemandBounded(c *gosocketio.Channel, param interface{}) {
 	fmt.Println("demand_bounded_by")
 	end := time.Now()
 	date := &mf.TBoundedBy{
@@ -243,9 +243,9 @@ func onDemandPeriodDate(c *gosocketio.Channel, param interface{}) {
 	ioserv.BroadcastToAll("bounded_by", date)
 }
 
-func demandPeriodDate(server *gosocketio.Server) {
+func demandBounded(server *gosocketio.Server) {
 	fmt.Println("ready demand_bounded_by")
-	server.On("demand_bounded_by", onDemandPeriodDate)
+	server.On("demand_bounded_by", onDemandBounded)
 }
 
 type DemandMovingFeatures struct {
@@ -398,7 +398,7 @@ func main() {
 	go monitorStatus() // keep status
 
 	go demandMovingFeature(ioserv)
-	go demandPeriodDate(ioserv)
+	go demandBounded(ioserv)
 
 	serveMux := http.NewServeMux()
 
