@@ -29,10 +29,15 @@ const socketUri = 'http://localhost:10080';
 
 const connectSocket = () => {
   return new Promise(resolve => {
+    console.log('connect socket');
     const socket = io(socketUri);
     socket.on('connect', () => {
       console.log('connected socket');
+      console.log(socket);
       resolve(socket);
+      setTimeout(() => {
+        socket.emit('demand_bounded_by', {});
+      }, 200);
     });
   });
 };
@@ -51,6 +56,8 @@ function createSocketChannel(socket: SocketIOClient.Socket) {
     };
 
     const boundedByHandler = (bounded: any) => {
+      console.log('recived Bounded by data');
+      console.log(bounded);
       emit(
         setBounded({
           start: new Date(bounded.beginPosition.seconds * 1000),
@@ -175,6 +182,7 @@ function* updateFleetObject({ type, payload }) {
 }
 
 function* watchOnData() {
+  console.log('watch on data');
   const socket = yield call(connectSocket);
   yield put(setSocketClient(socket));
   const socketChannel = yield call(createSocketChannel, socket);
@@ -182,6 +190,7 @@ function* watchOnData() {
   while (true) {
     try {
       const action = yield take(socketChannel);
+      console.log(action);
       yield put(action);
     } catch (e) {
       socketChannel.close();
@@ -190,6 +199,7 @@ function* watchOnData() {
 }
 
 function* doDemandMovingFeatures(action) {
+  console.log('demand moving features');
   const state = yield select();
   const { client } = state.socket;
   const bounded = action.payload as Bounded;
@@ -203,8 +213,10 @@ function* doDemandMovingFeatures(action) {
 }
 
 function* doDemandBounded(action) {
+  console.log('demand bounded by');
   const state = yield select();
   const { client } = state.socket;
+  console.log(client);
   client.emit('demand_bounded_by', {});
 }
 
@@ -231,10 +243,14 @@ const getMillsecFromDuration = (
 };
 
 function* doSetStartDate(action) {
+  console.log('func doSetStartDate');
   const state = yield select();
   const bounded = action.payload as Bounded;
   const { selectedStartDate } = state.timelapseSettings as TimeLapseState;
+  console.log(selectedStartDate);
   if (selectedStartDate == null) {
+    console.log('set start date');
+    console.log(bounded);
     const startDate = bounded.start;
     yield put(setStartDate(startDate));
   }
@@ -285,7 +301,7 @@ export default function* rootSaga() {
     takeEvery(demandMovingFeatures, doDemandMovingFeatures),
     takeEvery(demandBounded, doDemandBounded),
     takeEvery(setBounded, doSetStartDate),
-    fork(watchOnData),
-    fork(monitorTimelapseSettings)
+    fork(monitorTimelapseSettings),
+    fork(watchOnData)
   ]);
 }

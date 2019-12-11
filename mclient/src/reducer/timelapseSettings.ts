@@ -26,6 +26,7 @@ const initialState: TimeLapseState = {
 export default (state = initialState, action: Action): TimeLapseState => {
   if (isType(action, actions.setBounded)) {
     const { payload } = action;
+    debugger;
     return {
       ...state,
       startDate: payload.start,

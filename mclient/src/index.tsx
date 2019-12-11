@@ -11,6 +11,7 @@ import mySaga from './sagas/subscribeSocket';
 import './harmovis.scss';
 import App from './App';
 
+console.log('load saga');
 const saga = createSagaMiddleware();
 
 const store = createStore(

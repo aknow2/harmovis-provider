@@ -4,6 +4,8 @@ go 1.12
 
 replace harmovis/mf => ./mf
 
+replace harmovis/retrieve => ./retrieve
+
 require (
 	github.com/golang/protobuf v1.3.2
 	github.com/googollee/go-socket.io v1.4.2

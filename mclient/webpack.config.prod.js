@@ -14,7 +14,7 @@ module.exports = merge(baseConfig,  {
   plugins: [
     new HtmlWebpackPlugin(
       {
-        template: path.resolve(__dirname, 'public', 'index.html'),
+        template: path.resolve(__dirname, 'prod', 'index.html'),
         filename: "./index.html"
       }
     )

@@ -12,7 +12,6 @@ import {
   ForwardButton,
   ReverseButton,
   AddMinutesButton,
-  ElapsedTimeRange,
   SpeedRange,
   Movesbase,
   MovesbaseOperation
@@ -24,6 +23,7 @@ import ToggleHeatMap from './container/ToggleHeatMap';
 import Toggle3DHeatmap from './container/Toggle3DHeatmap';
 import HeatmapTypeSelection from './container/HeatmapSelection';
 import DatePicker from './container/DatePicker';
+import ElapseTimeSlider from './container/ElapseTimeSlider';
 
 const MAPBOX_TOKEN =
   'pk.eyJ1IjoidG1rbnltIiwiYSI6ImNrMTd0N3hzcDFmcjkzaHAzNng3dGsxb3kifQ.EBD9eRBGp5zJWcu1Yk4wgQ';
@@ -129,11 +129,10 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
               <DatePicker />
             </li>
             <li>
-              elapsed time:
-              <ElapsedTimeRange
+              <ElapseTimeSlider
                 settime={settime}
-                timeLength={timeLength}
                 timeBegin={timeBegin}
+                timeLength={timeLength}
                 actions={actions}
               />
             </li>

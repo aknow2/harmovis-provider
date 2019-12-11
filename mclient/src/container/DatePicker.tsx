@@ -5,7 +5,11 @@ import { DurationUnit } from '../constants/timelapse';
 import * as actions from '../actions/actions';
 
 const dateString = (date: Date): string => {
-  return date.toISOString().split('.')[0];
+  const tzoffset = new Date().getTimezoneOffset() * 60000;
+  const dateStr = new Date(date.getTime() - tzoffset).toISOString();
+  const result = dateStr.split('.')[0];
+  debugger;
+  return result;
 };
 
 const defaultDate = new Date();
