@@ -23,8 +23,6 @@ import (
 	sxutil "github.com/synerex/synerex_sxutil"
 )
 
-const OK = "OK"
-
 // Harmoware Vis-Synerex provider provides map information to Web Service through socket.io.
 
 var (
@@ -245,6 +243,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// run moving features retrieve handler
+	movingFeaturesRetriever := retriever.CreateMovingFeatureRetriever(ioserv)
+	go movingFeaturesRetriever.SubscribeIOEventFromClient()
+
 	allowCorsServer := &CorsServer{ioserv}
 
 	client := sxutil.GrpcConnectServer(sxServerAddress) // if there is server address change, we should do it!
@@ -261,9 +263,6 @@ func main() {
 	//	go subscribePTSupply(pt_client)
 
 	go monitorStatus() // keep status
-
-	movingFeaturesRetriever := retriever.CreateMovingFeatureRetriever(ioserv)
-	go movingFeaturesRetriever.SubscribeIOEventFromClient()
 
 	serveMux := http.NewServeMux()
 

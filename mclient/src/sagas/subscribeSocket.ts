@@ -35,9 +35,6 @@ const connectSocket = () => {
       console.log('connected socket');
       console.log(socket);
       resolve(socket);
-      setTimeout(() => {
-        socket.emit('demand_bounded_by', {});
-      }, 200);
     });
   });
 };
