@@ -32,5 +32,4 @@ export const demandBounded = actionCreator<void>('DEMAND_BOUNDED');
 export const changeBeginPosition = actionCreator<Date>('CHANGE_BEGIN_POSITION');
 export const fetchInitialData = actionCreator<void>('FETCH_INITIAL_DATA');
 export const setStartDate = actionCreator<Date>('SET_START_DATE');
-export const setDurationUnit = actionCreator<DurationUnit>('SET_DURATION_UNIT');
-export const setDuration = actionCreator<number>('SET_DURATION');
+export const setEndDate = actionCreator<Date>('SET_END_DATE');

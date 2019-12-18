@@ -1,4 +1,6 @@
 import React from 'react';
+import Range from 'rc-slider/lib/Range';
+import 'rc-slider/assets/index.css';
 import { useSelector, useDispatch } from 'react-redux';
 import { TimeLapseState } from '../reducer/timelapseSettings';
 import { DurationUnit } from '../constants/timelapse';
@@ -19,52 +21,44 @@ const DatePicker: React.FC<any> = prop => {
     return st.timelapseSettings;
   });
   const dispatcher = useDispatch();
-  const onChangeDateHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
+  const onChangeStartDateHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(ev.currentTarget.value);
     dispatcher(actions.setStartDate(date));
   };
-  const onChangeDurationHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const duration = parseInt(ev.currentTarget.value, 10);
-    if (!Number.isNaN(duration)) {
-      dispatcher(actions.setDuration(duration));
-    }
-  };
-  const onChangeDurationUnitHandler = (
-    ev: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const unit = ev.currentTarget.value as DurationUnit;
-    dispatcher(actions.setDurationUnit(unit));
+  const onChangeEndDateHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(ev.currentTarget.value);
+    dispatcher(actions.setEndDate(date));
   };
   const date = state.selectedStartDate ? state.selectedStartDate : defaultDate;
+  const endDate = state.selectedEndDate ? state.selectedEndDate : defaultDate;
   return (
     <div>
-      <span>Date(begin position):</span>
+      <span>begin position</span>
       <input
         type="datetime-local"
         min={dateString(state.startDate)}
         max={dateString(state.endDate)}
         value={dateString(date)}
-        onInput={onChangeDateHandler}
-        onChange={onChangeDateHandler}
+        onInput={onChangeStartDateHandler}
+        onChange={onChangeStartDateHandler}
       />
-      <div>
-        <span>Duration(end position):</span>
-        <div style={{ display: 'flex' }}>
-          <input
-            type="number"
-            value={state.duration}
-            onChange={onChangeDurationHandler}
-          />
-          <select
-            value={state.selecttedDurationUnit}
-            onChange={onChangeDurationUnitHandler}
-          >
-            {Object.keys(DurationUnit).map(value => {
-              return <option key={value} value={value} label={value} />;
-            })}
-          </select>
-        </div>
-      </div>
+      <span>begin position</span>
+      <input
+        type="datetime-local"
+        min={dateString(state.startDate)}
+        max={dateString(state.endDate)}
+        value={dateString(date)}
+        onInput={onChangeStartDateHandler}
+        onChange={onChangeStartDateHandler}
+      />
+      <Range
+        min={0}
+        max={1000}
+        count={2}
+        tipFormatter={value => dateString(new Date(value))}
+        value={[100, 400]}
+        allowCross={false}
+      />
     </div>
   );
 };
