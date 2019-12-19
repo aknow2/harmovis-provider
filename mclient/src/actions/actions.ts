@@ -1,6 +1,5 @@
 import actionCreatorFactory from 'typescript-fsa';
 import HeatmapType from '../constants/heatmapTypes';
-import { DurationUnit } from '../constants/timelapse';
 
 const actionCreator = actionCreatorFactory();
 export interface Bounded {
@@ -31,5 +30,9 @@ export const setBounded = actionCreator<Bounded>('SET_BOUNDED');
 export const demandBounded = actionCreator<void>('DEMAND_BOUNDED');
 export const changeBeginPosition = actionCreator<Date>('CHANGE_BEGIN_POSITION');
 export const fetchInitialData = actionCreator<void>('FETCH_INITIAL_DATA');
-export const setStartDate = actionCreator<Date>('SET_START_DATE');
-export const setEndDate = actionCreator<Date>('SET_END_DATE');
+export const setRangeStartDate = actionCreator<Date>('SET_RANGE_START_DATE');
+export const setRangeEndDate = actionCreator<Date>('SET_RANGE_END_DATE');
+export const setSelectedStartDate = actionCreator<Date>(
+  'SET_SELECTED_START_DATE'
+);
+export const setSelectedEndDate = actionCreator<Date>('SET_SELECTED_END_DATE');

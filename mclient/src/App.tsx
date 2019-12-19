@@ -126,9 +126,6 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
               <AddMinutesButton addMinutes={5} actions={actions} />
             </li>
             <li>
-              <DatePicker />
-            </li>
-            <li>
               <ElapseTimeSlider
                 settime={settime}
                 timeBegin={timeBegin}
@@ -187,7 +184,15 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
             ]}
           />
         </div>
-        <FpsDisplay />
+        <div
+          style={{
+            width: '100%',
+            position: 'absolute',
+            bottom: 20
+          }}
+        >
+          <DatePicker settime={settime} />
+        </div>
       </div>
     );
   }

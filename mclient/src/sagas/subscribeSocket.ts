@@ -17,15 +17,17 @@ import {
   setSocketClient,
   demandBounded,
   setBounded,
-  fetchInitialData,
   Bounded,
-  setStartDate
+  setRangeStartDate,
+  setRangeEndDate,
+  setSelectedStartDate,
+  setSelectedEndDate
 } from '../actions/actions';
 import { TimeLapseState } from '../reducer/timelapseSettings';
-import { DurationUnit } from '../constants/timelapse';
 
 const UPDATE_FLEET_OBJECT = 'UPDATE_FLEET_OBJECT';
 const socketUri = 'http://localhost:10080';
+const minToMsec = (min: number) => min * 60 * 1000;
 
 const connectSocket = () => {
   return new Promise(resolve => {
@@ -217,62 +219,37 @@ function* doDemandBounded(action) {
   client.emit('demand_bounded_by', {});
 }
 
-const getMillsecFromDuration = (
-  duration: number,
-  unit: DurationUnit
-): number => {
-  let result = duration;
-  switch (unit) {
-    case DurationUnit.day:
-      result *= 24;
-      return getMillsecFromDuration(result, DurationUnit.hour);
-    case DurationUnit.hour:
-      result *= 60;
-      return getMillsecFromDuration(result, DurationUnit.min);
-    case DurationUnit.min:
-      result *= 60;
-      return getMillsecFromDuration(result, DurationUnit.seconds);
-    case DurationUnit.seconds:
-    default:
-      result *= 1000;
-      return result;
-  }
-};
-
-function* doSetStartDate(action) {
+function* doSetRangeDate(action) {
   console.log('func doSetStartDate');
   const state = yield select();
   const bounded = action.payload as Bounded;
   const { selectedStartDate } = state.timelapseSettings as TimeLapseState;
   console.log(selectedStartDate);
   if (selectedStartDate == null) {
-    console.log('set start date');
-    console.log(bounded);
     const startDate = bounded.start;
-    yield put(setStartDate(startDate));
+    yield put(setRangeStartDate(startDate));
+    yield put(setRangeEndDate(new Date(startDate.getTime() + minToMsec(600))));
+    yield put(setSelectedStartDate(startDate));
+    yield put(
+      setSelectedEndDate(new Date(startDate.getTime() + minToMsec(60)))
+    );
   }
 }
 
 function* monitorTimelapseSettings() {
   let prevStartDate = null;
-  let prevDuration = null;
-  let prevUnit = null;
+  let prevEndDate = null;
   while (true) {
     const state = yield select();
     const timelapse = state.timelapseSettings as TimeLapseState;
     const startDate = timelapse.selectedStartDate;
-    const unit = timelapse.selecttedDurationUnit;
-    const { duration } = timelapse;
+    const endDate = timelapse.selectedEndDate;
     if (
       startDate &&
-      (startDate !== prevStartDate ||
-        unit !== prevUnit ||
-        prevDuration !== duration)
+      endDate &&
+      (startDate !== prevStartDate || endDate !== prevEndDate)
     ) {
       console.log('fetch new moving features');
-      const endDate = new Date(
-        startDate.getTime() + getMillsecFromDuration(duration, unit)
-      );
       const bounded = {
         start: startDate,
         end: endDate,
@@ -280,11 +257,9 @@ function* monitorTimelapseSettings() {
         upperCorner: timelapse.upperCorner
       };
       console.log(bounded);
-      yield put(setStartDate(startDate));
       yield put(demandMovingFeatures(bounded));
 
-      prevDuration = duration;
-      prevUnit = unit;
+      prevEndDate = endDate;
       prevStartDate = startDate;
     }
     yield take('*');
@@ -297,7 +272,7 @@ export default function* rootSaga() {
     takeEvery(updateFromMovingFeatures, doUpdateFromMovingFeatures),
     takeEvery(demandMovingFeatures, doDemandMovingFeatures),
     takeEvery(demandBounded, doDemandBounded),
-    takeEvery(setBounded, doSetStartDate),
+    takeEvery(setBounded, doSetRangeDate),
     fork(monitorTimelapseSettings),
     fork(watchOnData)
   ]);
