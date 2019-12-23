@@ -191,7 +191,7 @@ class App extends Container<BasedProps & HeatmapState, BasedState> {
             bottom: 20
           }}
         >
-          <DatePicker settime={settime} />
+          <DatePicker settime={settime} setCurrentTime={actions.setTime} />
         </div>
       </div>
     );

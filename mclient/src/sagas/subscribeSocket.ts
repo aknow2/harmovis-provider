@@ -19,15 +19,12 @@ import {
   setBounded,
   Bounded,
   setRangeStartDate,
-  setRangeEndDate,
-  setSelectedStartDate,
-  setSelectedEndDate
+  fetchMovingFeatures
 } from '../actions/actions';
 import { TimeLapseState } from '../reducer/timelapseSettings';
 
 const UPDATE_FLEET_OBJECT = 'UPDATE_FLEET_OBJECT';
 const socketUri = 'http://localhost:10080';
-const minToMsec = (min: number) => min * 60 * 1000;
 
 const connectSocket = () => {
   return new Promise(resolve => {
@@ -228,42 +225,24 @@ function* doSetRangeDate(action) {
   if (selectedStartDate == null) {
     const startDate = bounded.start;
     yield put(setRangeStartDate(startDate));
-    yield put(setRangeEndDate(new Date(startDate.getTime() + minToMsec(600))));
-    yield put(setSelectedStartDate(startDate));
-    yield put(
-      setSelectedEndDate(new Date(startDate.getTime() + minToMsec(60)))
-    );
+    yield put(fetchMovingFeatures());
   }
 }
 
-function* monitorTimelapseSettings() {
-  let prevStartDate = null;
-  let prevEndDate = null;
-  while (true) {
-    const state = yield select();
-    const timelapse = state.timelapseSettings as TimeLapseState;
-    const startDate = timelapse.selectedStartDate;
-    const endDate = timelapse.selectedEndDate;
-    if (
-      startDate &&
-      endDate &&
-      (startDate !== prevStartDate || endDate !== prevEndDate)
-    ) {
-      console.log('fetch new moving features');
-      const bounded = {
-        start: startDate,
-        end: endDate,
-        lowerCorner: timelapse.lowerCorner,
-        upperCorner: timelapse.upperCorner
-      };
-      console.log(bounded);
-      yield put(demandMovingFeatures(bounded));
-
-      prevEndDate = endDate;
-      prevStartDate = startDate;
-    }
-    yield take('*');
-  }
+function* doFetchMovingFeatures() {
+  const state = yield select();
+  const timelapse = state.timelapseSettings as TimeLapseState;
+  const startDate = timelapse.selectedStartDate;
+  const endDate = timelapse.selectedEndDate;
+  console.log('fetch new moving features');
+  const bounded = {
+    start: startDate,
+    end: endDate,
+    lowerCorner: timelapse.lowerCorner,
+    upperCorner: timelapse.upperCorner
+  };
+  console.log(bounded);
+  yield put(demandMovingFeatures(bounded));
 }
 
 export default function* rootSaga() {
@@ -273,7 +252,7 @@ export default function* rootSaga() {
     takeEvery(demandMovingFeatures, doDemandMovingFeatures),
     takeEvery(demandBounded, doDemandBounded),
     takeEvery(setBounded, doSetRangeDate),
-    fork(monitorTimelapseSettings),
+    takeEvery(fetchMovingFeatures, doFetchMovingFeatures),
     fork(watchOnData)
   ]);
 }

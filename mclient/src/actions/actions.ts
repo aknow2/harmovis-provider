@@ -27,9 +27,11 @@ export const setSocketClient = actionCreator<SocketIOClient.Socket>(
 );
 
 export const setBounded = actionCreator<Bounded>('SET_BOUNDED');
+export const sweeping = actionCreator<boolean>('SWEEPING');
 export const demandBounded = actionCreator<void>('DEMAND_BOUNDED');
 export const changeBeginPosition = actionCreator<Date>('CHANGE_BEGIN_POSITION');
 export const fetchInitialData = actionCreator<void>('FETCH_INITIAL_DATA');
+export const fetchMovingFeatures = actionCreator<void>('FETCH_MOVING_FEATURES');
 export const setRangeStartDate = actionCreator<Date>('SET_RANGE_START_DATE');
 export const setRangeEndDate = actionCreator<Date>('SET_RANGE_END_DATE');
 export const setSelectedStartDate = actionCreator<Date>(

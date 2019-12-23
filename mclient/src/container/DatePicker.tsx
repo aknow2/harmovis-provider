@@ -23,6 +23,7 @@ const defaultDate = new Date();
 
 interface Props {
   settime: number;
+  setCurrentTime: Function;
 }
 
 const dotted: React.CSSProperties = {
@@ -33,8 +34,15 @@ const dotted: React.CSSProperties = {
 };
 
 const DatePicker: React.FC<Props> = prop => {
-  const { settime } = prop;
-  const state = useSelector<any, TimeLapseState>(st => {
+  const { settime, setCurrentTime } = prop;
+  const {
+    startDate,
+    endDate,
+    selectedStartDate,
+    selectedEndDate,
+    rangeStartDate,
+    rangeEndDate
+  } = useSelector<any, TimeLapseState>(st => {
     return st.timelapseSettings;
   });
   const dispatcher = useDispatch();
@@ -50,24 +58,28 @@ const DatePicker: React.FC<Props> = prop => {
     const date = new Date(ev.currentTarget.value);
     dispatcher(actions.setRangeEndDate(date));
   };
-  const onChangeRange = (positions: number[]) => {
-    debugger;
-    const startTime = positions[0];
-    const current = positions[0];
-    const endTime = positions[0];
-    dispatcher(actions.setSelectedStartDate(new Date(startTime)));
-    dispatcher(actions.setSelectedEndDate(new Date(endTime)));
+
+  const onChangedRange = () => {
+    console.log('change started time');
+    dispatcher(actions.fetchMovingFeatures());
   };
-  const selectedStartDate = state.selectedStartDate
-    ? state.selectedStartDate
-    : defaultDate;
-  const selectedEndDate = state.selectedEndDate
-    ? state.selectedEndDate
-    : defaultDate;
-  const rangeStartDate = state.rangeStartDate
-    ? state.rangeStartDate
-    : defaultDate;
-  const rangeEndDate = state.rangeEndDate ? state.rangeEndDate : defaultDate;
+  const onChangeRange = (positions: number[]) => {
+    const startTime = positions[0];
+    const current = positions[1];
+    const endTime = positions[2];
+    dispatcher(actions.sweeping(true));
+    if (selectedStartDate.getTime() !== startTime) {
+      dispatcher(actions.setSelectedStartDate(new Date(startTime)));
+    }
+    if (selectedEndDate.getTime() !== endTime) {
+      console.log(new Date(endTime));
+      dispatcher(actions.setSelectedEndDate(new Date(endTime)));
+    }
+  };
+  if (!selectedStartDate || !selectedEndDate) {
+    return <div> initializing </div>;
+  }
+
   return (
     <div
       style={{
@@ -92,7 +104,7 @@ const DatePicker: React.FC<Props> = prop => {
         >
           <div>
             <span className="p-left arrow-left-down">
-              {formatTime(state.startDate.getTime())}
+              {formatTime(startDate.getTime())}
             </span>
           </div>
           <div>
@@ -116,7 +128,7 @@ const DatePicker: React.FC<Props> = prop => {
             <div className="p-left arrow-left-down">
               <input
                 type="datetime-local"
-                min={dateString(state.startDate)}
+                min={dateString(startDate)}
                 max={dateString(rangeEndDate)}
                 value={dateString(rangeStartDate)}
                 onInput={onChangeRangeStartDateHandler}
@@ -137,7 +149,7 @@ const DatePicker: React.FC<Props> = prop => {
               <input
                 type="datetime-local"
                 min={dateString(rangeStartDate)}
-                max={dateString(state.endDate)}
+                max={dateString(endDate)}
                 value={dateString(rangeEndDate)}
                 onInput={onChangeRangeEndDateHandler}
                 onChange={onChangeRangeEndDateHandler}
@@ -150,6 +162,7 @@ const DatePicker: React.FC<Props> = prop => {
               max={rangeEndDate.getTime()}
               count={3}
               tipFormatter={value => dateString(new Date(value))}
+              onAfterChange={onChangedRange}
               onChange={onChangeRange}
               value={[
                 selectedStartDate.getTime(),
@@ -173,7 +186,7 @@ const DatePicker: React.FC<Props> = prop => {
             }}
           >
             <span className="p-right arrow-right-down">
-              {formatTime(state.endDate.getTime())}
+              {formatTime(endDate.getTime())}
             </span>
           </div>
           <div>

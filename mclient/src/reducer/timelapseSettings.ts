@@ -13,6 +13,9 @@ export interface TimeLapseState {
   upperCorner: number[];
 }
 
+const defaultDuration = 2 * 60 * 60 * 1000; // 2 hour.
+const defaultRange = 12 * 60 * 60 * 1000; // 12hour
+
 const initialState: TimeLapseState = {
   startDate: new Date(),
   endDate: new Date(),
@@ -27,7 +30,6 @@ const initialState: TimeLapseState = {
 export default (state = initialState, action: Action): TimeLapseState => {
   if (isType(action, actions.setBounded)) {
     const { payload } = action;
-    debugger;
     return {
       ...state,
       startDate: payload.start,
@@ -38,9 +40,22 @@ export default (state = initialState, action: Action): TimeLapseState => {
   }
   if (isType(action, actions.setSelectedStartDate)) {
     const { payload } = action;
+    const { selectedStartDate, selectedEndDate } = state;
+    const delta = (() => {
+      if (!selectedStartDate || !selectedEndDate) {
+        return defaultDuration;
+      }
+      return selectedEndDate.getTime() - selectedStartDate.getTime();
+    })();
+    const endDate = new Date(payload.getTime() + delta);
+    console.log('selected date');
+    console.log(delta);
+    console.log(payload);
+    console.log(endDate);
     return {
       ...state,
-      selectedStartDate: payload
+      selectedStartDate: payload,
+      selectedEndDate: endDate
     };
   }
   if (isType(action, actions.setSelectedEndDate)) {
@@ -52,17 +67,30 @@ export default (state = initialState, action: Action): TimeLapseState => {
   }
   if (isType(action, actions.setRangeStartDate)) {
     const { payload } = action;
+    const { rangeStartDate, rangeEndDate } = state;
+    const delta = (() => {
+      if (!rangeStartDate || !rangeEndDate) {
+        return defaultRange;
+      }
+      return rangeEndDate.getTime() - rangeStartDate.getTime();
+    })();
     return {
       ...state,
-      rangeStartDate: payload
+      rangeStartDate: payload,
+      rangeEndDate: new Date(payload.getTime() + delta),
+      selectedStartDate: payload,
+      selectedEndDate: new Date(payload.getTime() + defaultDuration)
     };
   }
   if (isType(action, actions.setRangeEndDate)) {
     const { payload } = action;
-    return {
-      ...state,
-      rangeEndDate: payload
-    };
+    const { rangeStartDate } = state;
+    if (payload.getTime() > rangeStartDate.getTime()) {
+      return {
+        ...state,
+        rangeEndDate: payload
+      };
+    }
   }
   return state;
 };
