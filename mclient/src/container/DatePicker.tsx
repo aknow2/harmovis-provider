@@ -1,5 +1,5 @@
 import React from 'react';
-import Range from 'rc-slider/lib/Range';
+import { Range, createSliderWithTooltip } from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { useSelector, useDispatch } from 'react-redux';
 import { TimeLapseState } from '../reducer/timelapseSettings';
@@ -19,8 +19,6 @@ const formatTime = (time: number) => {
     1}/${date.getDate()}/${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
 };
 
-const defaultDate = new Date();
-
 interface Props {
   settime: number;
   setCurrentTime: Function;
@@ -33,6 +31,7 @@ const dotted: React.CSSProperties = {
   borderBottom: 'none'
 };
 
+const TipRange = createSliderWithTooltip(Range);
 const DatePicker: React.FC<Props> = prop => {
   const { settime, setCurrentTime } = prop;
   const {
@@ -50,6 +49,7 @@ const DatePicker: React.FC<Props> = prop => {
     ev: React.ChangeEvent<HTMLInputElement>
   ) => {
     const date = new Date(ev.currentTarget.value);
+    debugger;
     dispatcher(actions.setRangeStartDate(date));
   };
   const onChangeRangeEndDateHandler = (
@@ -60,7 +60,7 @@ const DatePicker: React.FC<Props> = prop => {
   };
 
   const onChangedRange = () => {
-    console.log('change started time');
+    console.log('on changed range');
     dispatcher(actions.fetchMovingFeatures());
   };
   const onChangeRange = (positions: number[]) => {
@@ -80,6 +80,7 @@ const DatePicker: React.FC<Props> = prop => {
     return <div> initializing </div>;
   }
 
+  const tipFormatter = value => dateString(new Date(value));
   return (
     <div
       style={{
@@ -157,19 +158,21 @@ const DatePicker: React.FC<Props> = prop => {
             </div>
           </div>
           <div>
-            <Range
+            <TipRange
               min={rangeStartDate.getTime()}
               max={rangeEndDate.getTime()}
               count={3}
-              tipFormatter={value => dateString(new Date(value))}
+              tipFormatter={value => {
+                console.log(value);
+                return dateString(new Date(value));
+              }}
               onAfterChange={onChangedRange}
               onChange={onChangeRange}
               value={[
                 selectedStartDate.getTime(),
-                settime * 1000,
+                selectedStartDate.getTime() + 9999 * 102,
                 selectedEndDate.getTime()
               ]}
-              allowCross={false}
             />
           </div>
         </div>

@@ -16,13 +16,14 @@ export interface TimeLapseState {
 const defaultDuration = 2 * 60 * 60 * 1000; // 2 hour.
 const defaultRange = 12 * 60 * 60 * 1000; // 12hour
 
+const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 const initialState: TimeLapseState = {
-  startDate: new Date(),
+  startDate,
   endDate: new Date(),
-  rangeStartDate: null,
-  rangeEndDate: null,
-  selectedStartDate: null,
-  selectedEndDate: null,
+  rangeStartDate: startDate,
+  rangeEndDate: new Date(startDate.getTime() + defaultRange),
+  selectedStartDate: startDate,
+  selectedEndDate: new Date(startDate.getTime() + defaultDuration),
   lowerCorner: [],
   upperCorner: []
 };
@@ -74,6 +75,7 @@ export default (state = initialState, action: Action): TimeLapseState => {
       }
       return rangeEndDate.getTime() - rangeStartDate.getTime();
     })();
+    debugger;
     return {
       ...state,
       rangeStartDate: payload,
