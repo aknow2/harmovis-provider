@@ -55,3 +55,20 @@ message AbstractTrajectory {
   repeated string attr = 6; // 
   string interpolation = 7; // enum Lininear
 }
+
+message  GetBoundedRequest {}
+
+message GetMovingFeaturesRequest {
+    int64 start = 1;
+    int64 end = 2;
+    repeated float lowerCorner = 3;
+    repeated float uppderCorner = 4;
+}
+
+message StreamBoundedByRequest {}
+
+service MF {
+  rpc FetchBoundedBy(GetBoundedRequest) returns (TBoundedBy);
+  rpc StreamBoundedBy(stream StreamBoundedByRequest) returns (stream TBoundedBy) {}
+  rpc FetchMovingFeatures(GetMovingFeaturesRequest) returns (MovingFeatures);
+}
