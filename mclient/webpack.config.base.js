@@ -1,9 +1,6 @@
-const path = require("path");
 const webpack = require("webpack");
-const HtmlWebpackPlugin = require('html-webpack-plugin')
 const dotenv = require('dotenv');
 dotenv.config()
-console.log();
 
 new webpack.DefinePlugin({
   "process.env.MAPBOX_ACCESS_TOKEN": process.env.MAPBOX_ACCESS_TOKEN,

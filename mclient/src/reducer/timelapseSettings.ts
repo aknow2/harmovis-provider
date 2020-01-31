@@ -16,14 +16,14 @@ export interface TimeLapseState {
 const defaultDuration = 2 * 60 * 60 * 1000; // 2 hour.
 const defaultRange = 12 * 60 * 60 * 1000; // 12hour
 
-const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+const sd = new Date();
 const initialState: TimeLapseState = {
-  startDate,
-  endDate: new Date(),
-  rangeStartDate: startDate,
-  rangeEndDate: new Date(startDate.getTime() + defaultRange),
-  selectedStartDate: startDate,
-  selectedEndDate: new Date(startDate.getTime() + defaultDuration),
+  startDate: sd,
+  endDate: new Date(sd.getTime() + defaultRange * 2),
+  rangeStartDate: sd,
+  rangeEndDate: new Date(sd.getTime() + defaultRange),
+  selectedStartDate: sd,
+  selectedEndDate: new Date(sd.getTime() + defaultDuration),
   lowerCorner: [],
   upperCorner: []
 };
@@ -57,7 +57,14 @@ export default (state = initialState, action: Action): TimeLapseState => {
   }
   if (isType(action, actions.setRangeStartDate)) {
     const { payload } = action;
-    const { rangeStartDate, rangeEndDate, endDate } = state;
+    const { rangeStartDate, rangeEndDate, startDate, endDate } = state;
+
+    if (
+      payload.getTime() < startDate.getTime() ||
+      payload.getTime() > rangeEndDate.getTime()
+    ) {
+      return state;
+    }
     const delta = (() => {
       if (!rangeStartDate || !rangeEndDate) {
         return defaultRange;
@@ -82,8 +89,11 @@ export default (state = initialState, action: Action): TimeLapseState => {
   }
   if (isType(action, actions.setRangeEndDate)) {
     const { payload } = action;
-    const { rangeStartDate } = state;
-    if (payload.getTime() > rangeStartDate.getTime()) {
+    const { rangeStartDate, endDate } = state;
+    if (
+      payload.getTime() > rangeStartDate.getTime() &&
+      payload.getTime() < endDate.getTime()
+    ) {
       return {
         ...state,
         rangeEndDate: payload
@@ -93,6 +103,10 @@ export default (state = initialState, action: Action): TimeLapseState => {
   if (isType(action, actions.setSelectedStartDate)) {
     const { payload } = action;
     const { selectedStartDate, selectedEndDate, rangeEndDate } = state;
+
+    if (payload.getTime() > rangeEndDate.getTime()) {
+      return state;
+    }
     const delta = (() => {
       if (!selectedStartDate || !selectedEndDate) {
         return defaultDuration;
@@ -110,9 +124,12 @@ export default (state = initialState, action: Action): TimeLapseState => {
     };
   }
   if (isType(action, actions.setSelectedEndDate)) {
-    const { selectedStartDate } = state;
+    const { selectedStartDate, rangeEndDate } = state;
     const { payload } = action;
-    if (payload.getTime() > selectedStartDate.getTime()) {
+    if (
+      payload.getTime() > selectedStartDate.getTime() &&
+      payload.getTime() <= rangeEndDate.getTime()
+    ) {
       return {
         ...state,
         selectedEndDate: payload

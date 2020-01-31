@@ -218,15 +218,10 @@ function* doDemandBounded(action) {
 
 function* doSetRangeDate(action) {
   console.log('func doSetStartDate');
-  const state = yield select();
   const bounded = action.payload as Bounded;
-  const { selectedStartDate } = state.timelapseSettings as TimeLapseState;
-  console.log(selectedStartDate);
-  if (selectedStartDate == null) {
-    const startDate = bounded.start;
-    yield put(setRangeStartDate(startDate));
-    yield put(fetchMovingFeatures());
-  }
+  const startDate = bounded.start;
+  yield put(setRangeStartDate(startDate));
+  yield put(fetchMovingFeatures());
 }
 
 function* doFetchMovingFeatures() {
