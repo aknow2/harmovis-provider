@@ -17,7 +17,7 @@ module.exports = {
       {
         enforce: "pre",
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: /(node_modules|__test__)/,
         loader: "eslint-loader",
       },
       {
@@ -31,7 +31,7 @@ module.exports = {
       },
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: /(node_modules|__test__)/,
         use: [
           {
             loader: "ts-loader"
@@ -41,6 +41,7 @@ module.exports = {
       {
         enforce: "pre",
         test: /\.ts(x?)$/,
+        exclude: /(node_modules|__test__)/,
         loader: "source-map-loader"
       },
       {
